@@ -45,7 +45,7 @@ RSpec.describe Patternist::Controllers::Restful do
       end
 
       def self.find(id)
-        id == 1 ? new : nil
+        id == 1 ? new : raise("Record not found")
       end
 
       def initialize(attrs = {})
@@ -83,10 +83,30 @@ RSpec.describe Patternist::Controllers::Restful do
 
   before do
     allow(dummy_controller_class).to receive(:resource_class).and_return(Post)
-    # allow(dummy_controller_class).to receive(:resource_name).and_return("post")
   end
 
   describe "#index" do
+    context "with pagination" do
+      before do
+        stub_const("Kaminari", Module.new)
+        allow(Post).to receive(:all).and_return(Post.all)
+        allow(Post.all).to receive(:page).and_return(Post.all)
+        allow(Post.all).to receive(:per).and_return(%w[post1 post2])
+      end
+
+      it "paginates the collection" do
+        dummy_controller.params = { page: 2, per_page: 2 }
+        expect(Post.all).to receive(:page).with(2)
+        expect(Post.all).to receive(:per).with(2)
+        dummy_controller.index
+      end
+
+      it "sets the paginated collection as instance variable" do
+        dummy_controller.index
+        expect(dummy_controller.instance_variable_get("@posts")).to eq(%w[post1 post2])
+      end
+    end
+
     it "sets the instance variable for the collection" do
       aggregate_failures do
         expect(dummy_controller.instance_variable_get(:@posts)).to be_nil
@@ -184,6 +204,30 @@ RSpec.describe Patternist::Controllers::Restful do
         expect { dummy_controller.create }.to raise_error(Patternist::NotImplementedError)
       end
     end
+
+    context "with custom response format" do
+      let(:custom_response) { -> { "custom response" } }
+
+      before do
+        dummy_controller.define_singleton_method(:resource_params) do
+          { title: "New Post", body: "Body" }
+        end
+
+        allow(dummy_controller).to receive(:format_response).and_call_original
+        allow(dummy_controller).to receive(:redirect_to).and_return(true)
+        allow(dummy_controller).to receive(:render).and_return(true)
+      end
+
+      it "uses format_response with custom format" do
+        expect(dummy_controller).to receive(:format_response).with(
+          kind_of(Post),
+          notice: "Post was successfully created.",
+          status: :created,
+          on_error_render: :new
+        )
+        dummy_controller.create
+      end
+    end
   end
 
   describe "#update" do
@@ -197,11 +241,11 @@ RSpec.describe Patternist::Controllers::Restful do
         allow(dummy_controller).to receive(:render).and_return(true)
         allow_any_instance_of(Post).to receive(:update).and_return(true)
         allow(Post).to receive(:find).and_call_original
+        dummy_controller.params = { id: 1, title: "Updated" }
       end
 
       it "updates the resource and responds with success" do
         aggregate_failures do
-          dummy_controller.params = { id: 1, title: "Updated" }
           expect(dummy_controller).to receive(:respond_to).and_call_original
           dummy_controller.update
           expect(Post).to have_received(:find).with(1)
@@ -220,8 +264,34 @@ RSpec.describe Patternist::Controllers::Restful do
     end
 
     context "when controller does not define resource_params" do
+      before do
+        dummy_controller.params = { id: 1, title: "Updated" }
+      end
+
       it "raises NotImplementedError" do
         expect { dummy_controller.update }.to raise_error(Patternist::NotImplementedError)
+      end
+    end
+
+    xcontext "with custom response format" do
+      before do
+        dummy_controller.define_singleton_method(:resource_params) do
+          { title: "Updated Post", body: "Updated Body" }
+        end
+
+        allow(dummy_controller).to receive(:format_response).and_call_original
+        allow(dummy_controller).to receive(:redirect_to).and_return(true)
+        allow(dummy_controller).to receive(:render).and_return(true)
+      end
+
+      it "uses format_response with custom format" do
+        expect(dummy_controller).to receive(:format_response).with(
+          kind_of(Post),
+          notice: "Post was successfully updated.",
+          status: :ok,
+          on_error_render: :edit
+        )
+        dummy_controller.update
       end
     end
   end
@@ -231,12 +301,34 @@ RSpec.describe Patternist::Controllers::Restful do
       allow(dummy_controller).to receive(:redirect_to).and_return(true)
       allow(dummy_controller).to receive(:render).and_return(true)
       allow(dummy_controller).to receive(:head).and_return(true)
+      dummy_controller.params = { id: 1 }
     end
 
     it "destroys the resource and responds with success" do
-      dummy_controller.params = { id: 1 }
       expect(dummy_controller).to receive(:respond_to).and_call_original
       dummy_controller.destroy
+    end
+
+    context "with custom response format" do
+      before do
+        allow(dummy_controller).to receive(:format_response).and_call_original
+        allow(dummy_controller).to receive(:redirect_to).and_return(true)
+        allow(dummy_controller).to receive(:head).and_return(true)
+      end
+
+      it "uses format_response with custom format" do
+        expect(dummy_controller).to receive(:format_response).with(
+          kind_of(Post),
+          notice: "Post was successfully destroyed.",
+          status: :see_other,
+          on_error_render: :show,
+          formats: {
+            html: kind_of(Proc),
+            json: kind_of(Proc)
+          }
+        )
+        dummy_controller.destroy
+      end
     end
   end
 
