@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "patternist/controllers/response_handling"
+require "patternist/rails/controllers/response_handling"
 
-RSpec.describe Patternist::Controllers::ResponseHandling do
+RSpec.describe Patternist::Rails::Controllers::ResponseHandling do
   let(:dummy_controller_class) do
     Class.new do
-      include Patternist::Controllers::ResponseHandling
+      include Patternist::Rails::Controllers::ResponseHandling
 
       def respond_to
         yield(format_stub)
@@ -33,8 +33,7 @@ RSpec.describe Patternist::Controllers::ResponseHandling do
   describe "#format_response" do
     context "when operation succeeds" do
       before do
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:render).and_return(true)
+        allow(dummy_controller).to receive_messages(redirect_to: true, render: true)
       end
 
       it "handles successful HTML response" do
@@ -101,20 +100,28 @@ RSpec.describe Patternist::Controllers::ResponseHandling do
 
       it "handles custom error format handlers" do
         custom_error_html = -> { "custom error html" }
-        custom_error_json = -> { "custom error json" }
-
         expect(custom_error_html).to receive(:call)
-        expect(custom_error_json).to receive(:call)
-
         dummy_controller.format_response(resource,
                                       notice: "Success",
                                       status: :ok,
                                       on_error_render: :new,
                                       formats: {
                                         error_html: custom_error_html,
+                                      }) { false }
+      end
+
+      it "handles custom error format handlers" do
+        custom_error_json = -> { "custom error json" }
+        expect(custom_error_json).to receive(:call)
+        dummy_controller.format_response(resource,
+                                      notice: "Success",
+                                      status: :ok,
+                                      on_error_render: :new,
+                                      formats: {
                                         error_json: custom_error_json
                                       }) { false }
       end
     end
+
   end
 end

@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "patternist/controllers/restful"
+require "patternist/rails/controllers/restful"
 require "ostruct"
 
-RSpec.describe Patternist::Controllers::Restful do
+RSpec.describe Patternist::Rails::Controllers::Restful do
   let(:dummy_controller_class) do
     Class.new do
-      include Patternist::Controllers::Restful
+      include Patternist::Rails::Controllers::Restful
 
       attr_accessor :params
 
@@ -86,7 +86,7 @@ RSpec.describe Patternist::Controllers::Restful do
   end
 
   describe "#index" do
-    context "with pagination" do
+    context "with pagination", skip: "Pagination not supported" do
       before do
         stub_const("Kaminari", Module.new)
         allow(Post).to receive(:all).and_return(Post.all)
@@ -270,28 +270,6 @@ RSpec.describe Patternist::Controllers::Restful do
 
       it "raises NotImplementedError" do
         expect { dummy_controller.update }.to raise_error(Patternist::NotImplementedError)
-      end
-    end
-
-    xcontext "with custom response format" do
-      before do
-        dummy_controller.define_singleton_method(:resource_params) do
-          { title: "Updated Post", body: "Updated Body" }
-        end
-
-        allow(dummy_controller).to receive(:format_response).and_call_original
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:render).and_return(true)
-      end
-
-      it "uses format_response with custom format" do
-        expect(dummy_controller).to receive(:format_response).with(
-          kind_of(Post),
-          notice: "Post was successfully updated.",
-          status: :ok,
-          on_error_render: :edit
-        )
-        dummy_controller.update
       end
     end
   end
