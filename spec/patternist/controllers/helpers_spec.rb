@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "patternist/controllers/helpers"
+require "patternist/rails/controllers/helpers"
 require "ostruct"
 
-RSpec.describe Patternist::Controllers::Helpers do
+RSpec.describe Patternist::Rails::Controllers::Helpers do
   let(:dummy_controller_class) do
     Class.new do
-      include Patternist::Controllers::Helpers
+      include Patternist::Rails::Controllers::Helpers
 
       def params
         @params ||= {}
@@ -60,6 +60,11 @@ RSpec.describe Patternist::Controllers::Helpers do
         allow(dummy_controller_class).to receive(:name).and_return("UnknownController")
         expect { dummy_controller_class.resource_class }.to raise_error(Patternist::NameError)
       end
+
+      it "caches the result" do
+        expect(Object).to receive(:const_get).with("Post").once.and_return(Post)
+        2.times { dummy_controller_class.resource_class }
+      end
     end
 
     describe ".resource_name" do
@@ -91,6 +96,17 @@ RSpec.describe Patternist::Controllers::Helpers do
       it "returns the human-readable name of the resource class" do
         expect(dummy_controller.resource_class_name).to eq("Post")
       end
+
+      it "falls back to class name if model_name is not available" do
+        stub_const("SimplePost", Class.new do
+          def self.name
+            "SimplePost"
+          end
+        end)
+        allow(dummy_controller_class).to receive(:resource_class).and_return(SimplePost)
+
+        expect(dummy_controller.resource_class_name).to eq("SimplePost")
+      end
     end
 
     describe "#collection_name" do
@@ -102,6 +118,10 @@ RSpec.describe Patternist::Controllers::Helpers do
     describe "#instance_variable_name" do
       it "returns the instance variable name for a given resource" do
         expect(dummy_controller.instance_variable_name("post")).to eq("@post")
+      end
+
+      it "works with pluralized names" do
+        expect(dummy_controller.instance_variable_name("posts")).to eq("@posts")
       end
     end
 
