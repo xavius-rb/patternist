@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module Patternist
-  module Rails
-    # Provides response handling for Rails controllers
-    module Controllers
+  module Controllers
+    module ActionPack
       # Handles HTTP and JSON response formatting for controllers
       #
       # This module provides consistent response patterns across controllers,
@@ -13,7 +12,7 @@ module Patternist
       #
       # @example Basic usage
       #   class PostsController
-      #     include Patternist::Controllers::ResponseHandling
+      #     include Patternist::Controllers::ActionPack::ResponseHandling
       #
       #     def create
       #       @post = Post.new(post_params)
@@ -105,11 +104,13 @@ module Patternist
         # @param custom_formats [Hash] Custom format handlers
         # @return [void]
         def handle_error(format, resource, on_error_render, custom_formats)
-          handle_format(format, custom_formats, :error_html, -> { render on_error_render, status: :unprocessable_entity }, :html)
-          handle_format(format, custom_formats, :error_json, -> { render json: resource.errors, status: :unprocessable_entity }, :json)
+          handle_format(format, custom_formats, :error_html, lambda {
+            render on_error_render, status: :unprocessable_entity
+          }, :html)
+          handle_format(format, custom_formats, :error_json, lambda {
+            render json: resource.errors, status: :unprocessable_entity
+          }, :json)
         end
-
-        private
 
         def handle_format(format, custom_formats, key, default_proc, format_key = key)
           format.public_send(format_key) do

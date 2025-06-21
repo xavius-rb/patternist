@@ -1,11 +1,15 @@
-require:
+plugins:
   - rubocop-rspec
+
 AllCops:
   TargetRubyVersion: 3.1
   SuggestExtensions: false
 
-Style/StringLiterals:
-  EnforcedStyle: double_quotes
+RSpec/ExampleLength:
+  Max: 15
 
-Style/StringLiteralsInInterpolation:
-  EnforcedStyle: double_quotes
+RSpec/AnyInstance:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false

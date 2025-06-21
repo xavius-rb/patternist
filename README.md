@@ -3,7 +3,7 @@
 [![Ruby](https://github.com/xavius-rb/patternist/actions/workflows/main.yml/badge.svg)](https://github.com/xavius-rb/patternist/actions/workflows/main.yml)
 [![Gem Version](https://badge.fury.io/rb/patternist.svg)](https://badge.fury.io/rb/patternist)
 
-Patternist is a Ruby gem that provides reusable utilities and patterns for Ruby and Rails applications. It offers a collection of modules designed to reduce boilerplate code and standardize common patterns in controller development.
+Patternist is a Ruby gem that provides reusable utilities and patterns for Ruby and Rails applications. It offers a collection of modules designed to reduce boilerplate code and standardize and protect common patterns.
 
 ## Features
 
@@ -35,33 +35,13 @@ gem install patternist
 
 ## Usage
 
-### Controller Helpers
+### RESTful Controller
 
-The `Patternist::Rails::Controllers::Helpers` module provides automatic resource inference and helper methods for controllers:
-
-```ruby
-class PostsController < ApplicationController
-  include Patternist::Rails::Controllers::Helpers
-
-  def index
-    # Automatically infers @posts from controller name
-    set_collection_instance(Post.all)
-  end
-
-  def show
-    # Automatically infers @post from controller name
-    set_resource_instance(Post.find(params[:id]))
-  end
-end
-```
-
-### RESTful Actions
-
-The `Patternist::Rails::Controllers::Restful` module provides complete CRUD operations:
+The `Patternist::Controller` module provides complete CRUD operations:
 
 ```ruby
 class PostsController < ApplicationController
-  include Patternist::Rails::Controllers::Restful
+  include Patternist::Controller
 
   private
 
@@ -80,13 +60,46 @@ This automatically provides all standard RESTful actions:
 - `update` - Updates an existing resource
 - `destroy` - Destroys a resource
 
-### Response Handling
+### Controller Helpers
 
-The `Patternist::Rails::Controllers::ResponseHandling` module provides unified response formatting:
+The `Patternist::Controllers::ActionPack::Helpers` module provides automatic resource inference and helper methods for controllers:
 
 ```ruby
 class PostsController < ApplicationController
-  include Patternist::Rails::Controllers::ResponseHandling
+  include Patternist::Controllers::ActionPack::Helpers
+
+  def index
+    # Automatically infers @posts from controller name
+    set_collection_instance(Post.all)
+  end
+
+  def show
+    # Automatically infers @post from controller name
+    set_resource_instance(Post.find(params[:id]))
+  end
+end
+```
+
+### Helper Methods
+
+The helpers module provides several useful methods:
+
+- `resource_class` - Inferred model class (e.g., `Post` for `PostsController`)
+- `resource_name` - Underscored resource name (e.g., `"post"`)
+- `resource_class_name` - Human-readable resource name (e.g., `"Post"`)
+- `collection_name` - Pluralized resource name (e.g., `"posts"`)
+- `instance_variable_name` - Instance variable name for a resource
+- `resource` - Get the resource instance variable
+- `id_param` - Get the ID parameter from params
+
+
+### Response Handling
+
+The `Patternist::Controllers::ActionPack::ResponseHandling` module provides unified response formatting:
+
+```ruby
+class PostsController < ApplicationController
+  include Patternist::Controllers::ActionPack::ResponseHandling
 
   def create
     @post = Post.new(post_params)
@@ -120,21 +133,10 @@ format_response(@post,
 end
 ```
 
-### Helper Methods
-
-The helpers module provides several useful methods:
-
-- `resource_class` - Inferred model class (e.g., `Post` for `PostsController`)
-- `resource_name` - Underscored resource name (e.g., `"post"`)
-- `resource_class_name` - Human-readable resource name (e.g., `"Post"`)
-- `collection_name` - Pluralized resource name (e.g., `"posts"`)
-- `instance_variable_name` - Instance variable name for a resource
-- `resource` - Get the resource instance variable
-- `id_param` - Get the ID parameter from params
 
 ## API Reference
 
-### Patternist::Rails::Controllers::Helpers
+### Patternist::Controllers::ActionPack::Helpers
 
 Provides helper methods for resource handling and naming conventions.
 
@@ -153,7 +155,7 @@ Provides helper methods for resource handling and naming conventions.
 - `set_collection_instance(value)` - Sets the collection instance variable
 - `set_resource_instance(value)` - Sets the resource instance variable
 
-### Patternist::Rails::Controllers::Restful
+### Patternist::Controllers::ActionPack::Restful
 
 Provides standard RESTful actions for controllers.
 
@@ -169,7 +171,7 @@ Provides standard RESTful actions for controllers.
 **Required Methods:**
 - `resource_params` - Must be implemented to define permitted parameters
 
-### Patternist::Rails::Controllers::ResponseHandling
+### Patternist::Controllers::ActionPack::ResponseHandling
 
 Provides unified response formatting for different formats.
 
@@ -181,13 +183,6 @@ Provides unified response formatting for different formats.
 - Ruby >= 3.1.0
 - ActionPack >= 4.0 (for Rails integration)
 
-## Error Handling
-
-Patternist provides custom exception classes:
-
-- `Patternist::Error` - Base error class
-- `Patternist::NotImplementedError` - Raised when required methods are not implemented
-- `Patternist::NameError` - Raised when resource class cannot be inferred
 
 ## Examples
 
@@ -195,7 +190,7 @@ Patternist provides custom exception classes:
 
 ```ruby
 class PostsController < ApplicationController
-  include Patternist::Rails::Controllers::Restful
+  include Patternist::Controller
 
   # All RESTful actions are automatically provided
 
@@ -216,7 +211,7 @@ end
 
 ```ruby
 class Admin::PostsController < ApplicationController
-  include Patternist::Rails::Controllers::Restful
+  include Patternist::Controller
 
   # Automatically infers Post class from Admin::PostsController
 
@@ -232,7 +227,7 @@ end
 
 ```ruby
 class Api::V1::PostsController < ApplicationController
-  include Patternist::Rails::Controllers::Restful
+  include Patternist::Controller
 
   def create
     set_resource_instance(resource_class.new(resource_params))
