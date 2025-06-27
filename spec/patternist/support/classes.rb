@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Dummy resource class Activemodel for testing
 class Post
   attr_accessor :id
@@ -15,10 +17,10 @@ class Post
   end
 
   def self.name
-    "Post"
+    'Post'
   end
 
   def self.model_name
-    OpenStruct.new(human: "Post")
+    OpenStruct.new(human: 'Post')
   end
 end

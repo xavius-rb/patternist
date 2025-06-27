@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require "patternist/rails/controllers/helpers"
-require "ostruct"
+require 'patternist/controllers/actionpack/helpers'
+require 'ostruct'
 
-RSpec.describe Patternist::Rails::Controllers::Helpers do
+RSpec.describe Patternist::Controllers::ActionPack::Helpers do
   let(:dummy_controller_class) do
     Class.new do
-      include Patternist::Rails::Controllers::Helpers
+      include Patternist::Controllers::ActionPack::Helpers
 
       def params
         @params ||= {}
@@ -35,129 +35,128 @@ RSpec.describe Patternist::Rails::Controllers::Helpers do
   let(:dummy_controller) { dummy_controller_class.new }
 
   before do
-    stub_const("Post", Class.new do
+    stub_const('Post', Class.new do
       def self.name
-        "Post"
+        'Post'
       end
 
       def self.model_name
-        OpenStruct.new(human: "Post")
+        OpenStruct.new(human: 'Post')
       end
     end)
   end
 
-  describe "ClassMethods" do
+  describe 'ClassMethods' do
     before do
-      allow(dummy_controller_class).to receive(:name).and_return("PostsController")
+      allow(dummy_controller_class).to receive(:name).and_return('PostsController')
     end
 
-    describe ".resource_class" do
-      it "infers the resource class from the controller name" do
+    describe '.resource_class' do
+      it 'infers the resource class from the controller name' do
         expect(dummy_controller_class.resource_class).to eq(Post)
       end
 
-      it "raises a NameError if the resource class cannot be found" do
-        allow(dummy_controller_class).to receive(:name).and_return("UnknownController")
+      it 'raises a NameError if the resource class cannot be found' do
+        allow(dummy_controller_class).to receive(:name).and_return('UnknownController')
         expect { dummy_controller_class.resource_class }.to raise_error(Patternist::NameError)
       end
 
-      it "caches the result" do
-        expect(Object).to receive(:const_get).with("Post").once.and_return(Post)
+      it 'caches the result' do
+        allow(Object).to receive(:const_get).with('Post').once.and_return(Post)
         2.times { dummy_controller_class.resource_class }
+        expect(Object).to have_received(:const_get).with('Post').once
       end
     end
 
-    describe ".resource_name" do
-      it "returns the underscored name of the resource class" do
-        expect(dummy_controller_class.resource_name).to eq("post")
+    describe '.resource_name' do
+      it 'returns the underscored name of the resource class' do
+        expect(dummy_controller_class.resource_name).to eq('post')
       end
     end
   end
 
-  describe "InstanceMethods" do
+  describe 'InstanceMethods' do
     before do
-      allow(dummy_controller_class).to receive(:resource_class).and_return(Post)
-      allow(dummy_controller_class).to receive(:resource_name).and_return("post")
+      allow(dummy_controller_class).to receive_messages(resource_class: Post, resource_name: 'post')
     end
 
-    describe "#resource_class" do
-      it "returns the class resource_class inferred from the controller" do
+    describe '#resource_class' do
+      it 'returns the class resource_class inferred from the controller' do
         expect(dummy_controller.resource_class).to eq(Post)
       end
     end
 
-    describe "#resource_name" do
-      it "returns the underscored name of the resource" do
-        expect(dummy_controller.resource_name).to eq("post")
+    describe '#resource_name' do
+      it 'returns the underscored name of the resource' do
+        expect(dummy_controller.resource_name).to eq('post')
       end
     end
 
-    describe "#resource_class_name" do
-      it "returns the human-readable name of the resource class" do
-        expect(dummy_controller.resource_class_name).to eq("Post")
+    describe '#resource_class_name' do
+      it 'returns the human-readable name of the resource class' do
+        expect(dummy_controller.resource_class_name).to eq('Post')
       end
 
-      it "falls back to class name if model_name is not available" do
-        stub_const("SimplePost", Class.new do
+      it 'falls back to class name if model_name is not available' do
+        stub_const('SimplePost', Class.new do
           def self.name
-            "SimplePost"
+            'SimplePost'
           end
         end)
         allow(dummy_controller_class).to receive(:resource_class).and_return(SimplePost)
 
-        expect(dummy_controller.resource_class_name).to eq("SimplePost")
+        expect(dummy_controller.resource_class_name).to eq('SimplePost')
       end
     end
 
-    describe "#collection_name" do
-      it "returns the pluralized name of the resource" do
-        expect(dummy_controller.collection_name).to eq("posts")
+    describe '#collection_name' do
+      it 'returns the pluralized name of the resource' do
+        expect(dummy_controller.collection_name).to eq('posts')
       end
     end
 
-    describe "#instance_variable_name" do
-      it "returns the instance variable name for a given resource" do
-        expect(dummy_controller.instance_variable_name("post")).to eq("@post")
-      end
-
-      it "works with pluralized names" do
-        expect(dummy_controller.instance_variable_name("posts")).to eq("@posts")
+    describe '#resource' do
+      it 'returns the resource from the instance variable' do
+        dummy_controller.instance_variable_set(:@post, 'dummy resource')
+        expect(dummy_controller.resource).to eq('dummy resource')
       end
     end
 
-    describe "#resource" do
-      it "returns the resource from the instance variable" do
-        dummy_controller.instance_variable_set(:@post, "dummy resource")
-        expect(dummy_controller.resource).to eq("dummy resource")
-      end
-    end
-
-    describe "#id_param" do
-      it "fetches the ID param from params" do
+    describe '#id_param' do
+      it 'fetches the ID param from params' do
         dummy_controller.params[:id] = 123
         expect(dummy_controller.id_param).to eq(123)
       end
 
-      it "returns nil if the ID param is not found" do
+      it 'returns nil if the ID param is not found' do
         expect(dummy_controller.id_param).to be_nil
       end
     end
 
-    describe "#respond_when" do
-      it "responds with success when the block returns true" do
-        resource = double("resource")
-        expect(dummy_controller).to receive(:redirect_to).with(resource, notice: "Success")
-        expect(dummy_controller).to receive(:render).with(:show, status: :ok, location: resource)
-
-        dummy_controller.respond_when(resource, notice: "Success", status: :ok, on_error_render: :new) { true }
+    describe '#respond_when' do
+      before do
+        allow(dummy_controller).to receive(:redirect_to)
+        allow(dummy_controller).to receive(:render)
       end
 
-      it "responds with error when the block returns false" do
-        resource = double("resource", errors: { error: "Invalid" })
-        expect(dummy_controller).to receive(:render).with(:new, status: :unprocessable_entity)
-        expect(dummy_controller).to receive(:render).with(json: resource.errors, status: :unprocessable_entity)
+      it 'responds with success when the block returns true' do
+        resource = instance_double(Post)
+        dummy_controller.respond_when(resource, notice: 'Success', status: :ok, on_error_render: :new) { true }
 
-        dummy_controller.respond_when(resource, notice: "Failure", status: :ok, on_error_render: :new) { false }
+        aggregate_failures do
+          expect(dummy_controller).to have_received(:redirect_to).with(resource, notice: 'Success')
+          expect(dummy_controller).to have_received(:render).with(:show, status: :ok, location: resource)
+        end
+      end
+
+      it 'responds with error when the block returns false' do
+        resource = instance_double(Post, errors: { error: 'Invalid' })
+        dummy_controller.respond_when(resource, notice: 'Failure', status: :ok, on_error_render: :new) { false }
+
+        aggregate_failures do
+          expect(dummy_controller).to have_received(:render).with(:new, status: :unprocessable_entity)
+          expect(dummy_controller).to have_received(:render).with(json: resource.errors, status: :unprocessable_entity)
+        end
       end
     end
   end

@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
-require "patternist/rails/controllers/restful"
-require "ostruct"
+require 'patternist/controller'
+require 'ostruct'
 
-RSpec.describe Patternist::Rails::Controllers::Restful do
+RSpec.describe Patternist::Controller do
   let(:dummy_controller_class) do
     Class.new do
-      include Patternist::Rails::Controllers::Restful
-
+      include Patternist::Controller
       attr_accessor :params
 
       def initialize
@@ -37,7 +36,7 @@ RSpec.describe Patternist::Rails::Controllers::Restful do
   let(:dummy_controller) { dummy_controller_class.new }
 
   before do
-    stub_const("Post", Class.new do
+    stub_const('Post', Class.new do
       attr_accessor :title, :body
 
       def self.all
@@ -45,7 +44,7 @@ RSpec.describe Patternist::Rails::Controllers::Restful do
       end
 
       def self.find(id)
-        id == 1 ? new : raise("Record not found")
+        id == 1 ? new : raise('Record not found')
       end
 
       def initialize(attrs = {})
@@ -54,11 +53,11 @@ RSpec.describe Patternist::Rails::Controllers::Restful do
       end
 
       def self.name
-        "Post"
+        'Post'
       end
 
       def self.model_name
-        OpenStruct.new(human: "Post")
+        OpenStruct.new(human: 'Post')
       end
 
       def save
@@ -76,228 +75,217 @@ RSpec.describe Patternist::Rails::Controllers::Restful do
       end
 
       def errors
-        { error: "Invalid" }
+        { error: 'Invalid' }
       end
     end)
-  end
-
-  before do
     allow(dummy_controller_class).to receive(:resource_class).and_return(Post)
   end
 
-  describe "#index" do
-    context "with pagination", skip: "Pagination not supported" do
+  describe '#index' do
+    context 'with pagination', skip: 'Pagination not supported' do
       before do
-        stub_const("Kaminari", Module.new)
+        stub_const('Kaminari', Module.new)
         allow(Post).to receive(:all).and_return(Post.all)
-        allow(Post.all).to receive(:page).and_return(Post.all)
-        allow(Post.all).to receive(:per).and_return(%w[post1 post2])
+        allow(Post.all).to receive_messages(page: Post.all, per: %w[post1 post2])
       end
 
-      it "paginates the collection" do
+      it 'paginates the collection' do
         dummy_controller.params = { page: 2, per_page: 2 }
-        expect(Post.all).to receive(:page).with(2)
-        expect(Post.all).to receive(:per).with(2)
         dummy_controller.index
+
+        aggregate_failures do
+          expect(Post.all).to have_received(:page).with(2)
+          expect(Post.all).to have_received(:per).with(2)
+        end
       end
 
-      it "sets the paginated collection as instance variable" do
+      it 'sets the paginated collection as instance variable' do
         dummy_controller.index
-        expect(dummy_controller.instance_variable_get("@posts")).to eq(%w[post1 post2])
+        expect(dummy_controller.instance_variable_get('@posts')).to eq(%w[post1 post2])
       end
     end
 
-    it "sets the instance variable for the collection" do
+    it 'sets the instance variable for the collection' do
       aggregate_failures do
         expect(dummy_controller.instance_variable_get(:@posts)).to be_nil
         dummy_controller.index
         expect(dummy_controller.instance_variable_get(:@posts)).to eq(%w[post1 post2 post3])
-        expect(dummy_controller.instance_variable_get("@posts")).to eq(Post.all)
+        expect(dummy_controller.instance_variable_get('@posts')).to eq(Post.all)
       end
     end
   end
 
-  describe "#show" do
+  describe '#show' do
     before do
       allow(Post).to receive(:find).and_call_original
       dummy_controller.params = { id: 1 }
     end
 
-    it "sets the instance variable for the resource" do
+    it 'sets the instance variable for the resource' do
       aggregate_failures do
-        expect(dummy_controller.instance_variable_get("@post")).to be_nil
+        expect(dummy_controller.instance_variable_get('@post')).to be_nil
         dummy_controller.show
         expect(Post).to have_received(:find).with(1)
-        expect(dummy_controller.instance_variable_get("@post")).to be_a(Post)
+        expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
       end
     end
   end
 
-  describe "#edit" do
+  describe '#edit' do
     before do
       allow(Post).to receive(:find).and_call_original
       dummy_controller.params = { id: 1 }
     end
 
-    it "sets the instance variable for the resource" do
+    it 'sets the instance variable for the resource' do
       aggregate_failures do
-        expect(dummy_controller.instance_variable_get("@post")).to be_nil
+        expect(dummy_controller.instance_variable_get('@post')).to be_nil
         dummy_controller.edit
         expect(Post).to have_received(:find).with(1)
-        expect(dummy_controller.instance_variable_get("@post")).to be_a(Post)
+        expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
       end
     end
   end
 
-  describe "#new" do
+  describe '#new' do
     before do
       allow(Post).to receive(:new).and_call_original
     end
 
-    it "sets a new instance of the resource" do
+    it 'sets a new instance of the resource' do
       aggregate_failures do
-        expect(dummy_controller.instance_variable_get("@post")).to be_nil
+        expect(dummy_controller.instance_variable_get('@post')).to be_nil
         dummy_controller.new
         expect(Post).to have_received(:new).with(no_args)
-        expect(dummy_controller.instance_variable_get("@post")).to be_a(Post)
+        expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
       end
     end
   end
 
-  describe "#create" do
-    context "when controller defines resource_params" do
+  describe '#create' do
+    context 'when controller defines resource_params' do
       before do
         dummy_controller.define_singleton_method(:resource_params) do
-          { title: "New Post", body: "Body" }
+          { title: 'New Post', body: 'Body' }
         end
 
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:render).and_return(true)
+        allow(dummy_controller).to receive_messages(redirect_to: true, render: true)
         allow_any_instance_of(Post).to receive(:save).and_return(true)
         allow(Post).to receive(:new).and_call_original
       end
 
-      it "creates a new resource and responds with success" do
+      it 'creates a new resource and responds with success' do
         aggregate_failures do
-          expect(dummy_controller).to receive(:respond_to).and_call_original
-          expect(dummy_controller.instance_variable_get("@post")).to be_nil
+          allow(dummy_controller).to receive(:respond_to).and_call_original
+          expect(dummy_controller.instance_variable_get('@post')).to be_nil
           dummy_controller.create
-          expect(dummy_controller.instance_variable_get("@post")).to be_a(Post)
-          expect(Post).to have_received(:new).with(title: "New Post", body: "Body")
+          expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
+          expect(Post).to have_received(:new).with(title: 'New Post', body: 'Body')
           expect(dummy_controller).to have_received(:render).with(:show, status: :created,
                                                                          location: an_instance_of(Post))
         end
       end
 
-      it "renders error response when save fails" do
+      it 'renders error response when save fails' do
         aggregate_failures do
           allow_any_instance_of(Post).to receive(:save).and_return(false)
-          expect(dummy_controller).to receive(:respond_to).and_call_original
+          allow(dummy_controller).to receive(:respond_to).and_call_original
           dummy_controller.create
           expect(dummy_controller).to have_received(:render).with(:new, status: :unprocessable_entity)
         end
       end
     end
 
-    context "when controller does not define resource_params" do
-      it "raises NotImplementedError" do
+    context 'when controller does not define resource_params' do
+      it 'raises NotImplementedError' do
         expect { dummy_controller.create }.to raise_error(Patternist::NotImplementedError)
       end
     end
 
-    context "with custom response format" do
-      let(:custom_response) { -> { "custom response" } }
+    context 'with custom response format' do
+      let(:custom_response) { -> { 'custom response' } }
 
       before do
         dummy_controller.define_singleton_method(:resource_params) do
-          { title: "New Post", body: "Body" }
+          { title: 'New Post', body: 'Body' }
         end
 
         allow(dummy_controller).to receive(:format_response).and_call_original
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:render).and_return(true)
+        allow(dummy_controller).to receive_messages(redirect_to: true, render: true)
       end
 
-      it "uses format_response with custom format" do
-        expect(dummy_controller).to receive(:format_response).with(
+      it 'uses format_response with custom format' do
+        dummy_controller.create
+        expect(dummy_controller).to have_received(:format_response).with(
           kind_of(Post),
-          notice: "Post was successfully created.",
+          notice: 'Post was successfully created.',
           status: :created,
           on_error_render: :new
         )
-        dummy_controller.create
       end
     end
   end
 
-  describe "#update" do
-    context "when controller defines resource_params" do
+  describe '#update' do
+    context 'when controller defines resource_params' do
       before do
         dummy_controller.define_singleton_method(:resource_params) do
-          { title: "New Post", body: "Body" }
+          { title: 'New Post', body: 'Body' }
         end
 
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:render).and_return(true)
+        allow(dummy_controller).to receive_messages(redirect_to: true, render: true)
         allow_any_instance_of(Post).to receive(:update).and_return(true)
         allow(Post).to receive(:find).and_call_original
-        dummy_controller.params = { id: 1, title: "Updated" }
+        dummy_controller.params = { id: 1, title: 'Updated' }
       end
 
-      it "updates the resource and responds with success" do
+      it 'updates the resource and responds with success' do
         aggregate_failures do
-          expect(dummy_controller).to receive(:respond_to).and_call_original
+          allow(dummy_controller).to receive(:respond_to).and_call_original
           dummy_controller.update
           expect(Post).to have_received(:find).with(1)
           expect(dummy_controller).to have_received(:render).with(:show, status: :ok, location: an_instance_of(Post))
         end
       end
 
-      it "renders error response when update fails" do
+      it 'renders error response when update fails' do
         aggregate_failures do
           allow_any_instance_of(Post).to receive(:update).and_return(false)
-          expect(dummy_controller).to receive(:respond_to).and_call_original
+          allow(dummy_controller).to receive(:respond_to).and_call_original
           dummy_controller.update
           expect(dummy_controller).to have_received(:render).with(:edit, status: :unprocessable_entity)
         end
       end
     end
 
-    context "when controller does not define resource_params" do
+    context 'when controller does not define resource_params' do
       before do
-        dummy_controller.params = { id: 1, title: "Updated" }
+        dummy_controller.params = { id: 1, title: 'Updated' }
       end
 
-      it "raises NotImplementedError" do
+      it 'raises NotImplementedError' do
         expect { dummy_controller.update }.to raise_error(Patternist::NotImplementedError)
       end
     end
   end
 
-  describe "#destroy" do
+  describe '#destroy' do
     before do
-      allow(dummy_controller).to receive(:redirect_to).and_return(true)
-      allow(dummy_controller).to receive(:render).and_return(true)
-      allow(dummy_controller).to receive(:head).and_return(true)
+      allow(dummy_controller).to receive_messages(redirect_to: true, render: true, head: true)
       dummy_controller.params = { id: 1 }
     end
 
-    it "destroys the resource and responds with success" do
-      expect(dummy_controller).to receive(:respond_to).and_call_original
-      dummy_controller.destroy
-    end
-
-    context "with custom response format" do
+    context 'with custom response format' do
       before do
         allow(dummy_controller).to receive(:format_response).and_call_original
-        allow(dummy_controller).to receive(:redirect_to).and_return(true)
-        allow(dummy_controller).to receive(:head).and_return(true)
+        allow(dummy_controller).to receive_messages(redirect_to: true, head: true)
       end
 
-      it "uses format_response with custom format" do
-        expect(dummy_controller).to receive(:format_response).with(
+      it 'uses format_response with custom format' do
+        dummy_controller.destroy
+        expect(dummy_controller).to have_received(:format_response).with(
           kind_of(Post),
-          notice: "Post was successfully destroyed.",
+          notice: 'Post was successfully destroyed.',
           status: :see_other,
           on_error_render: :show,
           formats: {
@@ -305,19 +293,18 @@ RSpec.describe Patternist::Rails::Controllers::Restful do
             json: kind_of(Proc)
           }
         )
-        dummy_controller.destroy
       end
     end
   end
 
-  describe "#resource_params" do
-    it "raises NotImplementedError when not defined" do
+  describe '#resource_params' do
+    it 'raises NotImplementedError when not defined' do
       expect { dummy_controller.send(:resource_params) }.to raise_error(Patternist::NotImplementedError)
     end
   end
 
-  describe "#collection" do
-    it "returns all resources" do
+  describe '#collection' do
+    it 'returns all resources' do
       expect(dummy_controller.send(:collection)).to eq(%w[post1 post2 post3])
     end
   end

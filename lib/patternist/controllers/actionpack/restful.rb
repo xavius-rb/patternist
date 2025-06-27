@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
-require "patternist/rails/controllers/helpers"
-require "patternist/rails/controllers/response_handling"
-require "patternist"
+require_relative 'helpers'
+require_relative 'response_handling'
 
 module Patternist
-  module Rails
-    # Provides a set of modules for Rails controllers to implement common patterns.
-    module Controllers
+  module Controllers
+    module ActionPack
       # Provides RESTful actions for controllers.
       # This module implements standard CRUD operations following REST conventions.
       # It requires the including class to implement `resource_params` for
@@ -15,7 +13,7 @@ module Patternist
       #
       # @example
       #   class PostsController
-      #     include Patternist::Rails::Controllers::Restful
+      #     include Patternist::Controllers::ActionPack::Restful
       #
       #     private
       #
@@ -26,7 +24,7 @@ module Patternist
       #
       # @example Custom response formats
       #   class API::PostsController < ApplicationController
-      #     include Patternist::Rails::Controllers::Restful
+      #     include Patternist::Controllers::ActionPack::Restful
       #
       #     def create
       #       set_resource_instance(resource_class.new(resource_params))
@@ -55,28 +53,28 @@ module Patternist
           # Sets the pluralized instance variable (e.g., @posts)
           # @return [void]
           def index
-            set_collection_instance(collection)
+            self.collection_instance = collection
           end
 
           # Shows a single resource
           # Sets the singular instance variable (e.g., @post)
           # @return [void]
           def show
-            set_resource
+            self.resource_instance = find_resource
           end
 
           # Prepares a resource for editing
           # Sets the singular instance variable (e.g., @post)
           # @return [void]
           def edit
-            set_resource
+            self.resource_instance = find_resource
           end
 
           # Initializes a new resource
           # Sets the singular instance variable (e.g., @post)
           # @return [void]
           def new
-            set_resource_instance(resource_class.new)
+            self.resource_instance = resource_class.new
           end
 
           # Creates a new resource
@@ -97,7 +95,7 @@ module Patternist
           #
           # @example Custom success handling
           #   def create
-          #     set_resource_instance(resource_class.new(resource_params))
+          #     self.resource_instance = resource_class.new(resource_params)
           #
           #     format_response(resource,
           #                     notice: "#{resource_class_name} created successfully!",
@@ -110,7 +108,7 @@ module Patternist
           #     end
           #   end
           def create
-            set_resource_instance(resource_class.new(resource_params))
+            self.resource_instance = resource_class.new(resource_params)
 
             format_response(resource,
                             notice: "#{resource_class_name} was successfully created.",
@@ -137,7 +135,7 @@ module Patternist
           #     # Automatically finds post, updates with params, and handles response
           #   end
           def update
-            set_resource
+            self.resource_instance = find_resource
 
             format_response(resource,
                             notice: "#{resource_class_name} was successfully updated.",
@@ -150,7 +148,7 @@ module Patternist
           # Destroys an existing resource
           # @return [void]
           def destroy
-            set_resource
+            self.resource_instance = find_resource
             resource.destroy
 
             format_response(resource,
@@ -170,7 +168,7 @@ module Patternist
           # @raise [NotImplementedError] If not implemented in the including class
           def resource_params
             raise NotImplementedError,
-                  "Controller must define `resource_params`. Example: `params.require(:post).permit(:title, :body)`"
+                  'Controller must define `resource_params`. Example: `params.require(:post).permit(:title, :body)`'
           end
 
           # Returns the collection of all resources
@@ -191,12 +189,6 @@ module Patternist
           #   end
           def collection
             resource_class.all
-          end
-
-          # Sets the resource instance variable based on the ID parameter
-          # @return [void]
-          def set_resource
-            instance_variable_set(instance_variable_name(resource_name), find_resource)
           end
 
           def find_resource

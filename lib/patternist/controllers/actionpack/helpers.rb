@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-require "active_support/core_ext/string/inflections"
+require 'active_support/core_ext/string/inflections'
 
 module Patternist
-  module Rails
-    # Provides Rails-specific functionality for the Patternist library.
-    module Controllers
+  module Controllers
+    module ActionPack
       # Provides helper methods for controller resource handling and naming conventions.
       # This module is designed to be included in controllers to provide standard
       # resource naming and parameter handling functionality.
@@ -16,7 +15,7 @@ module Patternist
       #
       # @example Basic usage
       #   class PostsController
-      #     include Patternist::Controllers::Helpers
+      #     include Patternist::Controllers::ActionPack::Helpers
       #
       #     def index
       #       @posts = collection
@@ -29,7 +28,7 @@ module Patternist
       #
       # @example Custom resource class
       #   class AdminPostsController
-      #     include Patternist::Controllers::Helpers
+      #     include Patternist::Controllers::ActionPack::Helpers
       #
       #     def self.resource_class
       #       Post # Override automatic inference
@@ -67,13 +66,11 @@ module Patternist
         # @example
         #   resource_class_name #=> "Post"
         def resource_class_name
-          @resource_class_name ||= begin
-            if resource_class.respond_to?(:model_name) && resource_class.model_name.respond_to?(:human)
-              resource_class.model_name.human
-            else
-              resource_class.name
-            end
-          end
+          @resource_class_name ||= if model_name_human?
+                                     resource_class.model_name.human
+                                   else
+                                     resource_class.name
+                                   end
         end
 
         # Returns the pluralized name of the resource
@@ -84,16 +81,6 @@ module Patternist
         #   collection_name #=> "posts"
         def collection_name
           @collection_name ||= resource_name.pluralize
-        end
-
-        # Returns the instance variable name for a given resource name
-        # @param name [String] The resource name
-        # @return [String] The instance variable name (e.g., "@post")
-        # @example
-        #   instance_variable_name("post") #=> "@post"
-        #   instance_variable_name("posts") #=> "@posts"
-        def instance_variable_name(name)
-          "@#{name}"
         end
 
         # Returns the current resource instance from the instance variable
@@ -139,8 +126,8 @@ module Patternist
         # @param value [Object] The collection to set
         # @return [Object] The set value
         # @example
-        #   set_collection(Post.all)
-        def set_collection_instance(value)
+        #   collection_instance = Post.all
+        def collection_instance=(value)
           instance_variable_set(instance_variable_name(collection_name), value)
         end
 
@@ -148,9 +135,19 @@ module Patternist
         # @param value [Object] The resource instance to set
         # @return [Object] The set value
         # @example
-        #   set_resource(Post.find(1))
-        def set_resource_instance(value)
+        #   resource_instance = Post.find(1)
+        def resource_instance=(value)
           instance_variable_set(instance_variable_name(resource_name), value)
+        end
+
+        private
+
+        def model_name_human?
+          resource_class.respond_to?(:model_name) && resource_class.model_name.respond_to?(:human)
+        end
+
+        def instance_variable_name(name)
+          "@#{name}"
         end
 
         # Class methods automatically added to the including class
@@ -185,17 +182,17 @@ module Patternist
           # @return [Class] The inferred resource class
           # @raise [NameError] If the resource class cannot be inferred
           def infer_resource_class
-            controller_name = name.gsub(/Controller$/, "").split("::").last
+            controller_name = name.gsub(/Controller$/, '').split('::').last
 
             return Object.const_get(controller_name.singularize) if controller_name
 
             raise NameError,
                   "Could not infer resource class for #{name}. " \
-                  "Please define `self.resource_class` in your controller."
+                  'Please define `self.resource_class` in your controller.'
           rescue ::NameError => e
             raise NameError,
                   "Could not infer resource class for #{name}: #{e.message}. " \
-                  "Please define `self.resource_class` in your controller."
+                  'Please define `self.resource_class` in your controller.'
           end
         end
       end
