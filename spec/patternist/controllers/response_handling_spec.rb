@@ -103,7 +103,7 @@ RSpec.describe Patternist::Controllers::ActionPack::ResponseHandling do
                                          status: :ok,
                                          on_error_render: :new,
                                          formats: {
-                                           error_html: custom_error_html
+                                           on_error_html: custom_error_html
                                          }) { false }
 
         expect(custom_error_html).to have_received(:call)
@@ -119,7 +119,7 @@ RSpec.describe Patternist::Controllers::ActionPack::ResponseHandling do
                                          status: :ok,
                                          on_error_render: :new,
                                          formats: {
-                                           error_json: custom_error_json
+                                           on_error_json: custom_error_json
                                          }) { false }
 
         expect(custom_error_json).to have_received(:call)

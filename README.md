@@ -126,8 +126,8 @@ format_response(@post,
                 formats: {
                   html: -> { redirect_to custom_path },
                   json: -> { render json: custom_serializer(@post) },
-                  error_html: -> { render :custom_error },
-                  error_json: -> { render json: { error: "Custom error" } }
+                  on_error_html: -> { render :custom_error },
+                  on_error_json: -> { render json: { error: "Custom error" } }
                 }) do
   @post.update(post_params)
 end

@@ -3,7 +3,7 @@
 require 'patternist/controllers/actionpack/restful'
 
 module Patternist
-  # The Controller module provides a namespace for controller-related functionality
+  # Base module for all controllers in the Patternist framework.
   module Controller
     def self.included(base)
       base.include Controllers::ActionPack::Restful
