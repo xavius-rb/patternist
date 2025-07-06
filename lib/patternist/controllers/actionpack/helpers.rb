@@ -35,6 +35,9 @@ module Patternist
       #     end
       #   end
       module Helpers
+        CONTROLLER_SUFFIX = 'Controller'
+        NAMESPACE_SEPARATOR = '::'
+
         def self.included(base)
           base.extend ClassMethods
         end
@@ -147,7 +150,7 @@ module Patternist
         end
 
         def instance_variable_name(name)
-          "@#{name}"
+          :"@#{name}"
         end
 
         # Class methods automatically added to the including class
@@ -178,21 +181,36 @@ module Patternist
 
           private
 
-          # Infers the resource class from the controller name
+          # Infers the resource class based on the controller name
+          # Handles namespaces and suffixes according to Rails conventions
           # @return [Class] The inferred resource class
           # @raise [NameError] If the resource class cannot be inferred
+          # @example
+          #   # For PostsController
+          #   PostsController.infer_resource_class #=> Post
+          # @example
+          #   # For Admin::PostsController
+          #   Admin::PostsController.infer_resource_class #=> Post
           def infer_resource_class
-            controller_name = name.gsub(/Controller$/, '').split('::').last
+            base_name = if name.end_with?(CONTROLLER_SUFFIX)
+                          name[0...-CONTROLLER_SUFFIX.length]
+                        else
+                          name
+                        end
 
-            return Object.const_get(controller_name.singularize) if controller_name
+            last_separator = base_name.rindex(NAMESPACE_SEPARATOR)
+            controller_name = if last_separator
+                                base_name[(last_separator + 2)..]
+                              else
+                                base_name
+                              end
 
-            raise NameError,
-                  "Could not infer resource class for #{name}. " \
-                  'Please define `self.resource_class` in your controller.'
-          rescue ::NameError => e
-            raise NameError,
-                  "Could not infer resource class for #{name}: #{e.message}. " \
-                  'Please define `self.resource_class` in your controller.'
+            Object.const_get(controller_name.singularize) if controller_name
+          rescue NameError => e
+            raise NameError, "Could not infer resource class for #{name}: #{e.message}. " \
+                             'Please define `self.resource_class` in your controller.'
+          rescue StandardError => e
+            raise NameError, "An error occurred while inferring resource class for #{name}: #{e.message}."
           end
         end
       end

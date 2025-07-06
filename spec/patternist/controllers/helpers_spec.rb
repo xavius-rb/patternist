@@ -56,6 +56,11 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
         expect(dummy_controller_class.resource_class).to eq(Post)
       end
 
+      it 'infers the resource class from namespaced controller names' do
+        allow(dummy_controller_class).to receive(:name).and_return('Admin::PostsController')
+        expect(dummy_controller_class.resource_class).to eq(Post)
+      end
+
       it 'raises a NameError if the resource class cannot be found' do
         allow(dummy_controller_class).to receive(:name).and_return('UnknownController')
         expect { dummy_controller_class.resource_class }.to raise_error(Patternist::NameError)
@@ -72,6 +77,12 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
       it 'returns the underscored name of the resource class' do
         expect(dummy_controller_class.resource_name).to eq('post')
       end
+
+      it 'caches the result' do
+        allow(dummy_controller_class).to receive(:resource_class).once.and_return(Post)
+        2.times { dummy_controller_class.resource_name }
+        expect(dummy_controller_class.resource_name).to eq('post')
+      end
     end
   end
 
@@ -82,6 +93,11 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
 
     describe '#resource_class' do
       it 'returns the class resource_class inferred from the controller' do
+        expect(dummy_controller.resource_class).to eq(Post)
+      end
+
+      it 'infers the resource class from namespaced controller names' do
+        allow(dummy_controller_class).to receive(:name).and_return('Admin::PostsController')
         expect(dummy_controller.resource_class).to eq(Post)
       end
     end
