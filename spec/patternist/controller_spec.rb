@@ -129,6 +129,44 @@ RSpec.describe Patternist::Controller do
         expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
       end
     end
+
+    it 'executes the block when provided' do
+      block_executed = false
+
+      dummy_controller.show do
+        block_executed = true
+      end
+
+      aggregate_failures do
+        expect(block_executed).to be true
+        expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
+      end
+    end
+
+    it 'allows access to the resource in the block' do
+      resource_in_block = nil
+
+      dummy_controller.show do
+        resource_in_block = dummy_controller.resource
+      end
+
+      expect(resource_in_block).to be_a(Post)
+    end
+
+    it 'can set additional instance variables in the block' do
+      dummy_controller.show do
+        dummy_controller.instance_variable_set(:@additional_data, 'custom data')
+      end
+
+      expect(dummy_controller.instance_variable_get(:@additional_data)).to eq('custom data')
+    end
+
+    it 'works without a block' do
+      aggregate_failures do
+        expect { dummy_controller.show }.not_to raise_error
+        expect(dummy_controller.instance_variable_get('@post')).to be_a(Post)
+      end
+    end
   end
 
   describe '#edit' do
@@ -273,6 +311,93 @@ RSpec.describe Patternist::Controller do
     before do
       allow(dummy_controller).to receive_messages(redirect_to: true, render: true, head: true)
       dummy_controller.params = { id: 1 }
+    end
+
+    it 'destroys the resource' do
+      post_instance = Post.new
+      allow(Post).to receive(:find).and_return(post_instance)
+      allow(post_instance).to receive(:destroy).and_return(true)
+
+      dummy_controller.destroy
+
+      expect(post_instance).to have_received(:destroy)
+    end
+
+    it 'calls format_response with correct parameters including notice' do
+      allow(dummy_controller).to receive(:format_response).and_call_original
+
+      dummy_controller.destroy
+
+      expect(dummy_controller).to have_received(:format_response).with(
+        kind_of(Post),
+        notice: 'Post was successfully destroyed.',
+        status: :see_other,
+        on_error_render: :show,
+        formats: {
+          html: kind_of(Proc),
+          json: kind_of(Proc)
+        }
+      )
+    end
+
+    it 'passes notice to redirect_to when using default HTML format' do
+      # Remove custom formats to test default behavior
+      allow(dummy_controller).to receive(:destroy).and_wrap_original do |_original_method|
+        dummy_controller.instance_eval do
+          self.resource_instance = find_resource
+          format_response(resource,
+                          notice: "#{resource_class_name} was successfully destroyed.",
+                          status: :see_other,
+                          on_error_render: :show) do
+            destroy_resource
+          end
+        end
+      end
+
+      dummy_controller.destroy
+
+      expect(dummy_controller).to have_received(:redirect_to).with(
+        kind_of(Post), notice: 'Post was successfully destroyed.'
+      )
+    end
+
+    it 'uses custom format when provided but notice should still be available' do
+      custom_html_called = false
+      custom_json_called = false
+
+      # Test with custom formats
+      allow(dummy_controller).to receive(:destroy).and_wrap_original do |_original_method|
+        dummy_controller.instance_eval do
+          self.resource_instance = find_resource
+          format_response(resource,
+                          notice: "#{resource_class_name} was successfully destroyed.",
+                          status: :see_other,
+                          on_error_render: :show,
+                          formats: {
+                            html: lambda {
+                              custom_html_called = true
+                              redirect_to resource_class, notice: "#{resource_class_name} was successfully destroyed."
+                            },
+                            json: lambda {
+                              custom_json_called = true
+                              head :no_content
+                            }
+                          }) do
+            destroy_resource
+          end
+        end
+      end
+
+      dummy_controller.destroy
+
+      aggregate_failures do
+        expect(custom_html_called).to be true
+        expect(custom_json_called).to be true
+        expect(dummy_controller).to have_received(:redirect_to).with(
+          Post, notice: 'Post was successfully destroyed.'
+        )
+        expect(dummy_controller).to have_received(:head).with(:no_content)
+      end
     end
 
     context 'with custom response format' do

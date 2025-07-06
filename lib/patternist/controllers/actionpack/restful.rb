@@ -59,8 +59,17 @@ module Patternist
           # Shows a single resource
           # Sets the singular instance variable (e.g., @post)
           # @return [void]
+          # @yield Optional block for additional logic after resource is found
+          # @example With additional logic
+          #   def show
+          #     super do
+          #       @related_items = resource.related_items
+          #       @statistics = resource.calculate_stats
+          #     end
+          #   end
           def show
             self.resource_instance = find_resource
+            yield if block_given?
           end
 
           # Prepares a resource for editing
@@ -68,6 +77,7 @@ module Patternist
           # @return [void]
           def edit
             self.resource_instance = find_resource
+            yield if block_given?
           end
 
           # Initializes a new resource
@@ -75,6 +85,7 @@ module Patternist
           # @return [void]
           def new
             self.resource_instance = resource_class.new
+            yield if block_given?
           end
 
           # Creates a new resource
@@ -114,7 +125,7 @@ module Patternist
                             notice: "#{resource_class_name} was successfully created.",
                             status: :created,
                             on_error_render: :new) do
-              resource.save
+              create_resource
             end
           end
 
@@ -141,7 +152,7 @@ module Patternist
                             notice: "#{resource_class_name} was successfully updated.",
                             status: :ok,
                             on_error_render: :edit) do
-              resource.update(resource_params)
+              update_resource
             end
           end
 
@@ -149,16 +160,19 @@ module Patternist
           # @return [void]
           def destroy
             self.resource_instance = find_resource
-            resource.destroy
 
             format_response(resource,
                             notice: "#{resource_class_name} was successfully destroyed.",
                             status: :see_other,
                             on_error_render: :show,
                             formats: {
-                              html: -> { redirect_to resource_class },
+                              html: lambda {
+                                redirect_to resource_class, notice: "#{resource_class_name} was successfully destroyed."
+                              },
                               json: -> { head :no_content }
-                            }) { true }
+                            }) do
+              destroy_resource
+            end
           end
 
           protected
@@ -193,6 +207,20 @@ module Patternist
 
           def find_resource
             resource_class.find(id_param)
+          end
+
+          # Creates the resource instance
+          def create_resource
+            resource.save
+          end
+
+          # Updates the resource instance with the permitted parameters
+          def update_resource
+            resource.update(resource_params)
+          end
+
+          def destroy_resource
+            resource.destroy
           end
         end
       end
