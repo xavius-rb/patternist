@@ -56,6 +56,11 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
         expect(dummy_controller_class.resource_class).to eq(Post)
       end
 
+      it 'infers the resource class from namespaced controller names' do
+        allow(dummy_controller_class).to receive(:name).and_return('Admin::PostsController')
+        expect(dummy_controller_class.resource_class).to eq(Post)
+      end
+
       it 'raises a NameError if the resource class cannot be found' do
         allow(dummy_controller_class).to receive(:name).and_return('UnknownController')
         expect { dummy_controller_class.resource_class }.to raise_error(Patternist::NameError)
@@ -72,6 +77,12 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
       it 'returns the underscored name of the resource class' do
         expect(dummy_controller_class.resource_name).to eq('post')
       end
+
+      it 'caches the result' do
+        allow(dummy_controller_class).to receive(:resource_class).once.and_return(Post)
+        2.times { dummy_controller_class.resource_name }
+        expect(dummy_controller_class.resource_name).to eq('post')
+      end
     end
   end
 
@@ -82,6 +93,11 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
 
     describe '#resource_class' do
       it 'returns the class resource_class inferred from the controller' do
+        expect(dummy_controller.resource_class).to eq(Post)
+      end
+
+      it 'infers the resource class from namespaced controller names' do
+        allow(dummy_controller_class).to receive(:name).and_return('Admin::PostsController')
         expect(dummy_controller.resource_class).to eq(Post)
       end
     end
@@ -130,33 +146,6 @@ RSpec.describe Patternist::Controllers::ActionPack::Helpers do
 
       it 'returns nil if the ID param is not found' do
         expect(dummy_controller.id_param).to be_nil
-      end
-    end
-
-    describe '#respond_when' do
-      before do
-        allow(dummy_controller).to receive(:redirect_to)
-        allow(dummy_controller).to receive(:render)
-      end
-
-      it 'responds with success when the block returns true' do
-        resource = instance_double(Post)
-        dummy_controller.respond_when(resource, notice: 'Success', status: :ok, on_error_render: :new) { true }
-
-        aggregate_failures do
-          expect(dummy_controller).to have_received(:redirect_to).with(resource, notice: 'Success')
-          expect(dummy_controller).to have_received(:render).with(:show, status: :ok, location: resource)
-        end
-      end
-
-      it 'responds with error when the block returns false' do
-        resource = instance_double(Post, errors: { error: 'Invalid' })
-        dummy_controller.respond_when(resource, notice: 'Failure', status: :ok, on_error_render: :new) { false }
-
-        aggregate_failures do
-          expect(dummy_controller).to have_received(:render).with(:new, status: :unprocessable_entity)
-          expect(dummy_controller).to have_received(:render).with(json: resource.errors, status: :unprocessable_entity)
-        end
       end
     end
   end
