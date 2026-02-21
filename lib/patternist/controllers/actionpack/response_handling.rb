@@ -19,6 +19,12 @@ module Patternist
           end
         end
 
+        protected
+
+        def resource_location(resource)
+          resource
+        end
+
         private
 
         # Handles successful responses for different formats
@@ -35,7 +41,7 @@ module Patternist
         end
 
         def html_success(location, notice:)
-          proc { redirect_to location, notice: notice }
+          proc { redirect_to resource_location(location), notice: notice }
         end
 
         def json_success(location, status:)

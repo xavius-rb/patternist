@@ -34,7 +34,7 @@ module Patternist
 
           # Initializes a new resource
           def new
-            self.resource_instance = resource_class.new
+            self.resource_instance = build_resource
             yield if block_given?
           end
 
@@ -85,6 +85,11 @@ module Patternist
           def resource_params
             raise NotImplementedError,
                   'Controller must define `resource_params`. Example: `params.require(:post).permit(:title, :body)`'
+          end
+
+          # Override this method to define the mechanism for initializing a resource
+          def build_resource
+            resource_class.new
           end
         end
       end
