@@ -252,6 +252,69 @@ class Api::V1::PostsController < ApplicationController
 end
 ```
 
+## Testing with RSpec
+
+Patternist ships a `patternist/rspec` module that provides a shared example covering all seven RESTful actions. Use it in request specs to test any controller that includes `Patternist::Controller` with minimal boilerplate.
+
+### Setup
+
+**1. Add the runtime test dependencies to your Gemfile:**
+
+```ruby
+group :test do
+  gem 'rspec-rails'
+  gem 'factory_bot_rails'
+end
+```
+
+**2. Require the module in `spec/rails_helper.rb` (or `spec/spec_helper.rb`):**
+
+```ruby
+require 'patternist/rspec'
+```
+
+### Usage
+
+Include the shared example in any `type: :request` spec and pass the resource name (as a symbol) and the model class:
+
+```ruby
+# spec/requests/posts_spec.rb
+RSpec.describe "/posts", type: :request do
+  it_behaves_like :patternist_controller, :post, Post
+end
+```
+
+This generates tests for all seven RESTful actions: `GET /index`, `GET /show`, `GET /new`, `GET /edit`, `POST /create`, `PATCH /update`, and `DELETE /destroy`.
+
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| FactoryBot | A factory named after the resource (e.g. `:post`) must exist |
+| URL helpers | Standard Rails route helpers must be available in the spec |
+| ActiveSupport | Provided transitively by ActionPack – already a gem dependency |
+
+### Overridable `let` helpers
+
+The shared example exposes three `let` helpers you can override to tailor the spec to your model:
+
+| Helper | Default | Purpose |
+|---|---|---|
+| `valid_attributes` | `FactoryBot.attributes_for(resource_name)` | Attributes that pass validation |
+| `invalid_attributes` | `FactoryBot.attributes_for(resource_name, name: nil)` | Attributes that fail validation |
+| `new_attributes` | `{ name: "Updated <Resource>" }` | Attributes used in the update spec |
+
+Example override:
+
+```ruby
+RSpec.describe "/posts", type: :request do
+  it_behaves_like :patternist_controller, :post, Post do
+    let(:invalid_attributes) { { title: nil, body: nil } }
+    let(:new_attributes)     { { title: "A brand new title" } }
+  end
+end
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

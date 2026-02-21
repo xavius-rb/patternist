@@ -39,5 +39,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Uncomment to register a new dependency of your gem
-  spec.add_dependency 'actionpack', '>= 4.0', '< 9.0'
+  spec.add_dependency 'actionpack', '>= 5.0', '< 9.0'
+  spec.add_dependency 'ostruct'
 end
